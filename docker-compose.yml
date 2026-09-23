@@ -1,0 +1,167 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: bibliotech-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bibliotech_auth
+      MYSQL_USER: bibliotech
+      MYSQL_PASSWORD: bibliotech
+    volumes:
+      - bibliotech-mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ubibliotech", "-pbibliotech"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 1. Netflix Eureka Service Registry
+  # -----------------------------------------------------------
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: bibliotech-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 2. Authentication & Authorization Service
+  # -----------------------------------------------------------
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: bibliotech-auth
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bibliotech_auth?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=bibliotech
+      - SPRING_DATASOURCE_PASSWORD=bibliotech
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 3. Book Inventory Service
+  # -----------------------------------------------------------
+  book-service:
+    build:
+      context: ./book-service
+      dockerfile: Dockerfile
+    container_name: bibliotech-book
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bibliotech_books?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=bibliotech
+      - SPRING_DATASOURCE_PASSWORD=bibliotech
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 4. Fine & Penalty Service
+  # -----------------------------------------------------------
+  fine-service:
+    build:
+      context: ./fine-service
+      dockerfile: Dockerfile
+    container_name: bibliotech-fine
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bibliotech_fines?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=bibliotech
+      - SPRING_DATASOURCE_PASSWORD=bibliotech
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 5. Rental & Circulation Service (Feign Client)
+  # -----------------------------------------------------------
+  rental-service:
+    build:
+      context: ./rental-service
+      dockerfile: Dockerfile
+    container_name: bibliotech-rental
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bibliotech_rentals?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=bibliotech
+      - SPRING_DATASOURCE_PASSWORD=bibliotech
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      book-service:
+        condition: service_started
+      fine-service:
+        condition: service_started
+    networks:
+      - bibliotech-net
+
+  # -----------------------------------------------------------
+  # 6. Spring Cloud API Gateway (Single Entry Point)
+  # -----------------------------------------------------------
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: bibliotech-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - bibliotech-net
+
+volumes:
+  bibliotech-mysql-data:
+
+networks:
+  bibliotech-net:
+    driver: bridge

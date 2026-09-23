@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bibliotech | Enterprise Circulation & Academic Resource Platform</title>
+  <meta name="description" content="Enterprise Academic Resource & Circulation Management Platform - Multi-Module Spring Boot Microservices with Eureka, API Gateway, JWT, OpenFeign">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Main Application Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="brand-section">
+        <div class="logo-badge">
+          <i class="fa-solid fa-book-bookmark"></i>
+        </div>
+        <div class="brand-details">
+          <div class="brand-title">BIBLIOTECH <span>CIRCULATION</span></div>
+          <div class="brand-subtitle">Academic Resource & Lending Platform (SOA PS021)</div>
+        </div>
+      </div>
+
+      <!-- Quick Microservices Status Indicator -->
+      <div class="header-status">
+        <div class="status-pill" id="gateway-indicator" title="API Gateway :8080">
+          <span class="status-dot"></span>
+          <span>Gateway :8080</span>
+        </div>
+        <div class="status-pill" id="eureka-indicator" title="Eureka Server :8761">
+          <span class="status-dot"></span>
+          <span>Eureka :8761</span>
+        </div>
+      </div>
+
+      <!-- Header Actions / User Section -->
+      <div class="header-actions">
+        <!-- Not Logged In State -->
+        <div id="auth-buttons-group" class="auth-buttons-group">
+          <div class="quick-demo-dropdown">
+            <button class="btn btn-outline btn-sm demo-dropdown-btn" id="demo-dropdown-btn">
+              <i class="fa-solid fa-bolt"></i> Quick Demo Login <i class="fa-solid fa-chevron-down ml-1"></i>
+            </button>
+            <div class="demo-dropdown-menu" id="demo-dropdown-menu">
+              <div class="dropdown-header">KL University Registered Team</div>
+              <button class="dropdown-item" onclick="quickLogin('2400030661', 'pass123')">
+                <span class="role-tag student">Student</span>
+                <div class="user-meta"><strong>Musuluri Sravanthi</strong><small>2400030661 (Team Lead)</small></div>
+              </button>
+              <button class="dropdown-item" onclick="quickLogin('2400033191', 'pass123')">
+                <span class="role-tag student">Student</span>
+                <div class="user-meta"><strong>Malisetty Naga Sai Nikitha</strong><small>2400033191</small></div>
+              </button>
+              <button class="dropdown-item" onclick="quickLogin('2400033157', 'pass123')">
+                <span class="role-tag student">Student</span>
+                <div class="user-meta"><strong>Karri Venkata Lakshmi Khyati</strong><small>2400033157</small></div>
+              </button>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-header">Administrative Staff</div>
+              <button class="dropdown-item" onclick="quickLogin('librarian', 'lib123')">
+                <span class="role-tag librarian">Librarian</span>
+                <div class="user-meta"><strong>Chief Librarian</strong><small>Circulation Desk</small></div>
+              </button>
+              <button class="dropdown-item" onclick="quickLogin('admin', 'admin123')">
+                <span class="role-tag admin">Admin</span>
+                <div class="user-meta"><strong>Platform Administrator</strong><small>Full Privileges</small></div>
+              </button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-sm" onclick="openLoginModal()">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+          </button>
+        </div>
+
+        <!-- Logged In State -->
+        <div id="user-profile-group" class="user-profile-group hidden">
+          <div class="user-chip">
+            <div class="user-avatar" id="user-avatar-initial">S</div>
+            <div class="user-info-text">
+              <span class="user-name" id="current-user-name">User</span>
+              <span class="user-role-badge" id="current-user-role">STUDENT</span>
+            </div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm" onclick="logoutUser()" title="Sign Out">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="app-nav">
+    <div class="nav-container">
+      <button class="nav-tab active" data-tab="catalog-tab" onclick="switchTab('catalog-tab')">
+        <i class="fa-solid fa-book-open"></i> Book Catalog
+      </button>
+      <button class="nav-tab" data-tab="loans-tab" onclick="switchTab('loans-tab')">
+        <i class="fa-solid fa-arrows-rotate"></i> My Active Loans
+        <span class="tab-badge" id="active-loans-count">0</span>
+      </button>
+      <button class="nav-tab" data-tab="fines-tab" onclick="switchTab('fines-tab')">
+        <i class="fa-solid fa-receipt"></i> Fines & Late Fees
+        <span class="tab-badge warning" id="unpaid-fines-count">0</span>
+      </button>
+      <button class="nav-tab" data-tab="admin-tab" id="admin-tab-btn" onclick="switchTab('admin-tab')">
+        <i class="fa-solid fa-shield-halved"></i> Circulation Desk (Staff)
+      </button>
+      <button class="nav-tab" data-tab="architecture-tab" onclick="switchTab('architecture-tab')">
+        <i class="fa-solid fa-network-wired"></i> Microservices Topology
+      </button>
+      <button class="nav-tab" data-tab="team-tab" onclick="switchTab('team-tab')">
+        <i class="fa-solid fa-users"></i> Project Team
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Layout -->
+  <main class="app-main">
+    
+    <!-- ================================================================= -->
+    <!-- TAB 1: BOOK CATALOG -->
+    <!-- ================================================================= -->
+    <section id="catalog-tab" class="tab-pane active">
+      <!-- Search and Filter Bar -->
+      <div class="filter-card glass-panel">
+        <div class="search-input-group">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="catalog-search-input" placeholder="Search by title, author, or ISBN..." oninput="debounceSearch()">
+        </div>
+        <div class="filter-dropdowns">
+          <select id="catalog-category-select" onchange="filterCatalog()">
+            <option value="">All Categories</option>
+            <option value="Cloud Architecture">Cloud Architecture</option>
+            <option value="Distributed Systems">Distributed Systems</option>
+            <option value="Software Engineering">Software Engineering</option>
+            <option value="Cloud Computing">Cloud Computing</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Web Development">Web Development</option>
+            <option value="Artificial Intelligence">Artificial Intelligence</option>
+          </select>
+          <select id="catalog-branch-select" onchange="filterCatalog()">
+            <option value="">All Campus Branches</option>
+            <option value="Main Campus Library">Main Campus Library</option>
+            <option value="Engineering Block Branch">Engineering Block Branch</option>
+            <option value="Tech Center Library">Tech Center Library</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="resetFilters()">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+          <button class="btn btn-primary btn-sm hidden" id="add-book-btn" onclick="openAddBookModal()">
+            <i class="fa-solid fa-plus"></i> Add New Book
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Ribbon -->
+      <div class="metrics-grid">
+        <div class="metric-card glass-panel">
+          <div class="metric-icon blue"><i class="fa-solid fa-book"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Total Titles</div>
+            <div class="metric-value" id="metric-total-titles">-</div>
+          </div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-icon green"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Available Copies</div>
+            <div class="metric-value" id="metric-available-copies">-</div>
+          </div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-icon amber"><i class="fa-solid fa-hand-holding-hand"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Circulating Copies</div>
+            <div class="metric-value" id="metric-issued-copies">-</div>
+          </div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-icon purple"><i class="fa-solid fa-building-columns"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Campus Branches</div>
+            <div class="metric-value">3 Active</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Book Catalog Grid -->
+      <div class="section-title-row">
+        <h2>Institutional Book Catalog</h2>
+        <span class="text-muted" id="catalog-results-count">Loading books...</span>
+      </div>
+      
+      <div class="books-grid" id="books-grid-container">
+        <!-- Dynamic Book Cards Injected Here -->
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: MY ACTIVE LOANS -->
+    <!-- ================================================================= -->
+    <section id="loans-tab" class="tab-pane">
+      <div class="section-header-banner glass-panel">
+        <div>
+          <h2>Active Loans & Circulation Records</h2>
+          <p class="text-muted">Track your borrowed academic books, loan due dates, and return items to replenish inventory.</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadMyRentals()">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Loans
+        </button>
+      </div>
+
+      <!-- Active Loans List -->
+      <div class="loans-section">
+        <h3>Currently Borrowed Items</h3>
+        <div id="active-loans-container" class="loans-cards-grid">
+          <!-- Active Loans Cards Injected Here -->
+        </div>
+      </div>
+
+      <!-- Returned History List -->
+      <div class="history-section mt-4">
+        <h3>Circulation History (Returned Items)</h3>
+        <div class="table-container glass-panel">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Loan ID</th>
+                <th>Book Title</th>
+                <th>Issue Date</th>
+                <th>Due Date</th>
+                <th>Returned Date</th>
+                <th>Status</th>
+                <th>Associated Fine</th>
+              </tr>
+            </thead>
+            <tbody id="returned-history-table-body">
+              <tr><td colspan="7" class="text-center text-muted">No returned history found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 3: FINES & PENALTIES -->
+    <!-- ================================================================= -->
+    <section id="fines-tab" class="tab-pane">
+      <div class="section-header-banner glass-panel">
+        <div>
+          <h2>Overdue Fines & Penalty Management</h2>
+          <p class="text-muted">Automated penalty calculation via <code class="code-badge">fine-service</code> (Configured Rate: <strong>₹10.00 / day overdue</strong>).</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadMyFines()">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Fines
+        </button>
+      </div>
+
+      <!-- Fine Balance Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card glass-panel">
+          <div class="metric-icon red"><i class="fa-solid fa-circle-exclamation"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Outstanding Balance</div>
+            <div class="metric-value text-danger" id="metric-unpaid-fines">₹0.00</div>
+          </div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-icon green"><i class="fa-solid fa-wallet"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Total Settled</div>
+            <div class="metric-value text-success" id="metric-paid-fines">₹0.00</div>
+          </div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-icon blue"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="metric-body">
+            <div class="metric-label">Accumulated Penalties</div>
+            <div class="metric-value" id="metric-total-fines-count">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fines Table -->
+      <div class="table-container glass-panel mt-3">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fine ID</th>
+              <th>Rental Loan ID</th>
+              <th>Student ID</th>
+              <th>Overdue Days</th>
+              <th>Daily Penalty Rate</th>
+              <th>Total Assessed</th>
+              <th>Status</th>
+              <th>Date Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="fines-table-body">
+            <tr><td colspan="9" class="text-center text-muted">No fines on record.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 4: CIRCULATION DESK (STAFF / ADMIN) -->
+    <!-- ================================================================= -->
+    <section id="admin-tab" class="tab-pane">
+      <div class="section-header-banner glass-panel">
+        <div>
+          <h2>Librarian & Administrative Operations</h2>
+          <p class="text-muted">Master view of institutional inventory, branch circulation records, and overdue book tracking.</p>
+        </div>
+        <div class="banner-actions">
+          <button class="btn btn-primary btn-sm" onclick="openAddBookModal()">
+            <i class="fa-solid fa-plus"></i> Add New Book
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="loadAdminData()">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh Staff Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Overdue Books Attention Alert -->
+      <div class="admin-grid mt-3">
+        <div class="glass-panel admin-card">
+          <div class="card-header-row">
+            <h3><i class="fa-solid fa-triangle-exclamation text-danger mr-1"></i> Overdue Loans Audit (Campus-Wide)</h3>
+            <span class="badge badge-danger" id="admin-overdue-count">0 Overdue</span>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Loan ID</th>
+                  <th>Student ID</th>
+                  <th>Student Username</th>
+                  <th>Book Title</th>
+                  <th>Due Date</th>
+                  <th>Days Overdue</th>
+                </tr>
+              </thead>
+              <tbody id="admin-overdue-table-body">
+                <tr><td colspan="6" class="text-center text-muted">No overdue books right now. All loans healthy!</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Master Institutional Loans -->
+        <div class="glass-panel admin-card mt-3">
+          <div class="card-header-row">
+            <h3><i class="fa-solid fa-list-check text-primary mr-1"></i> All Active & Historical Circulation Records</h3>
+            <div class="btn-group">
+              <button class="btn btn-xs btn-outline active" onclick="filterAdminRentals('ALL')">All</button>
+              <button class="btn btn-xs btn-outline" onclick="filterAdminRentals('ISSUED')">Active</button>
+              <button class="btn btn-xs btn-outline" onclick="filterAdminRentals('RETURNED')">Returned</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Student ID</th>
+                  <th>Student Name</th>
+                  <th>Book ID & Title</th>
+                  <th>Issue Date</th>
+                  <th>Due Date</th>
+                  <th>Status</th>
+                  <th>Fine Ref</th>
+                </tr>
+              </thead>
+              <tbody id="admin-all-rentals-table-body">
+                <tr><td colspan="8" class="text-center text-muted">Loading master circulation records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- All Institutional Fines -->
+        <div class="glass-panel admin-card mt-3">
+          <div class="card-header-row">
+            <h3><i class="fa-solid fa-scale-balanced text-warning mr-1"></i> Master Institutional Fines Ledger</h3>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Fine ID</th>
+                  <th>Student</th>
+                  <th>Rental Ref</th>
+                  <th>Days Overdue</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Assessed At</th>
+                  <th>Settled At</th>
+                </tr>
+              </thead>
+              <tbody id="admin-all-fines-table-body">
+                <tr><td colspan="8" class="text-center text-muted">Loading fines ledger...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 5: MICROSERVICES TOPOLOGY -->
+    <!-- ================================================================= -->
+    <section id="architecture-tab" class="tab-pane">
+      <div class="section-header-banner glass-panel">
+        <div>
+          <h2>Microservices Architecture & Communication Topology</h2>
+          <p class="text-muted">Spring Cloud 2023.0.3 + Spring Boot 3.3.4 enterprise multi-module circulation platform.</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="pingAllServices()">
+          <i class="fa-solid fa-satellite-dish"></i> Ping Services Live
+        </button>
+      </div>
+
+      <!-- Service Health Badges Grid -->
+      <div class="services-status-grid">
+        <div class="service-health-card glass-panel" id="card-eureka">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-compass"></i> eureka-server</span>
+            <span class="badge badge-info">:8761</span>
+          </div>
+          <div class="service-desc">Service Registry & Discovery Dashboard</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-eureka"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <a href="http://localhost:8761" target="_blank" class="text-link">Open Dashboard <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+          </div>
+        </div>
+
+        <div class="service-health-card glass-panel" id="card-gateway">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-shield"></i> api-gateway</span>
+            <span class="badge badge-primary">:8080</span>
+          </div>
+          <div class="service-desc">Reactive Routing, CORS, Global JWT Filter</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-gateway"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <span class="text-muted">Single Entry Point</span>
+          </div>
+        </div>
+
+        <div class="service-health-card glass-panel" id="card-auth">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-key"></i> auth-service</span>
+            <span class="badge badge-secondary">:8081</span>
+          </div>
+          <div class="service-desc">User Management, BCrypt, JWT Issuance</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-auth"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <span class="text-muted">Roles: ADMIN, LIB, STD</span>
+          </div>
+        </div>
+
+        <div class="service-health-card glass-panel" id="card-book">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-book"></i> book-service</span>
+            <span class="badge badge-secondary">:8082</span>
+          </div>
+          <div class="service-desc">Book Catalog CRUD, Availability Counter</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-book"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <span class="text-muted">Inventory Tracking</span>
+          </div>
+        </div>
+
+        <div class="service-health-card glass-panel" id="card-rental">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-handshake"></i> rental-service</span>
+            <span class="badge badge-secondary">:8083</span>
+          </div>
+          <div class="service-desc">Borrow/Return Orchestrator, Feign Clients</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-rental"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <span class="text-muted">Duplicate Loan Guard</span>
+          </div>
+        </div>
+
+        <div class="service-health-card glass-panel" id="card-fine">
+          <div class="service-header">
+            <span class="service-name"><i class="fa-solid fa-calculator"></i> fine-service</span>
+            <span class="badge badge-secondary">:8084</span>
+          </div>
+          <div class="service-desc">Overdue Penalty Engine & Payment Ledger</div>
+          <div class="service-footer">
+            <span class="status-indicator unknown" id="ping-fine"><i class="fa-solid fa-circle-notch fa-spin"></i> Checking</span>
+            <span class="text-muted">₹10 / Overdue Day</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Architecture Visual Diagram -->
+      <div class="glass-panel diagram-panel mt-4">
+        <h3><i class="fa-solid fa-diagram-project text-primary mr-1"></i> Inter-Service Communication Flow</h3>
+        <div class="diagram-flow">
+          <div class="diagram-step">
+            <div class="step-box client"><i class="fa-solid fa-desktop"></i> Web Client / Frontend</div>
+            <div class="step-arrow"><i class="fa-solid fa-arrow-right"></i> HTTP + Bearer JWT</div>
+          </div>
+          <div class="diagram-step">
+            <div class="step-box gateway"><i class="fa-solid fa-shield"></i> API Gateway (:8080)<br><small>JWT Validation & Header Mutator</small></div>
+            <div class="step-arrow"><i class="fa-solid fa-arrows-split-up-and-left"></i> Load Balanced Routes</div>
+          </div>
+          <div class="diagram-step">
+            <div class="service-cluster">
+              <div class="step-box micro"><i class="fa-solid fa-key"></i> auth-service (:8081)</div>
+              <div class="step-box micro"><i class="fa-solid fa-book"></i> book-service (:8082)</div>
+              <div class="step-box micro highlight"><i class="fa-solid fa-handshake"></i> rental-service (:8083)<br><small>Feign Inter-Service Calls</small></div>
+              <div class="step-box micro"><i class="fa-solid fa-calculator"></i> fine-service (:8084)</div>
+            </div>
+          </div>
+        </div>
+        <div class="feign-callout glass-panel mt-3">
+          <div class="feign-tag"><i class="fa-solid fa-bolt"></i> OpenFeign In Action:</div>
+          <div class="feign-text">
+            When a student returns a book, <strong>rental-service</strong> invokes <code>BookClient.incrementCopies(bookId)</code> in <strong>book-service</strong> to restock inventory, and if overdue, invokes <code>FineClient.calculateFine(rentalId, studentId, days)</code> in <strong>fine-service</strong> to assess late penalties atomically!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB 6: PROJECT TEAM & ACADEMIC INFO -->
+    <!-- ================================================================= -->
+    <section id="team-tab" class="tab-pane">
+      <div class="section-header-banner glass-panel">
+        <div>
+          <h2>KL University - Course Project Details</h2>
+          <p class="text-muted">Department of Computer Science & Engineering | Service-Oriented Architecture (SOA)</p>
+        </div>
+      </div>
+
+      <div class="team-grid">
+        <div class="glass-panel team-card lead">
+          <div class="team-avatar">MS</div>
+          <div class="team-role-tag">Team Lead / Developer</div>
+          <h3 class="team-name">Musuluri Sravanthi</h3>
+          <div class="team-id">ID: 2400030661</div>
+          <div class="team-email">2400030661@kluniversity.in</div>
+          <div class="team-contrib">Multi-Module Architecture, Eureka Service Discovery, Spring Cloud API Gateway, JWT Security Pipeline</div>
+        </div>
+
+        <div class="glass-panel team-card">
+          <div class="team-avatar">MN</div>
+          <div class="team-role-tag">Team Member / Developer</div>
+          <h3 class="team-name">Malisetty Naga Sai Nikitha</h3>
+          <div class="team-id">ID: 2400033191</div>
+          <div class="team-email">2400033191@kluniversity.in</div>
+          <div class="team-contrib">Book Service Catalog Management, Inventory Counter Logic, OpenFeign Inter-Service Restocking</div>
+        </div>
+
+        <div class="glass-panel team-card">
+          <div class="team-avatar">KV</div>
+          <div class="team-role-tag">Team Member / Developer</div>
+          <h3 class="team-name">Karri Venkata Lakshmi Khyati</h3>
+          <div class="team-id">ID: 2400033157</div>
+          <div class="team-email">2400033157@kluniversity.in</div>
+          <div class="team-contrib">Rental Service Circulation Rules, Duplicate Borrow Prevention, Fine Service Automated Penalty Math</div>
+        </div>
+      </div>
+
+      <!-- Course & Project Specifications Card -->
+      <div class="glass-panel mt-4 p-4">
+        <h3><i class="fa-solid fa-graduation-cap text-primary mr-1"></i> Academic Project Metadata</h3>
+        <div class="project-specs-grid mt-3">
+          <div class="spec-item">
+            <span class="spec-label">Course Code & Name</span>
+            <span class="spec-value">24SDCS03A - SOA Programming & Microservices</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Project Code</span>
+            <span class="spec-value">PS021</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Project Title</span>
+            <span class="spec-value">Enterprise Academic Resource & Circulation Management Platform</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Client / Domain</span>
+            <span class="spec-value">Bibliotech Circulation Systems</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Technology Stack</span>
+            <span class="spec-value">Spring Boot 3.3.4, Spring Cloud 2023.0.3, Java 21, JJWT, OpenFeign, Eureka, H2/MySQL</span>
+          </div>
+          <div class="spec-item">
+            <span class="spec-label">Architecture</span>
+            <span class="spec-value">Microservices Architecture with Reactive API Gateway and Discovery Server</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================================================================= -->
+  <!-- MODAL: SIGN IN / REGISTER -->
+  <!-- ================================================================= -->
+  <div class="modal-backdrop hidden" id="login-modal">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3 id="auth-modal-title"><i class="fa-solid fa-right-to-bracket text-primary mr-1"></i> Sign In to Bibliotech</h3>
+        <button class="modal-close-btn" onclick="closeLoginModal()">&times;</button>
+      </div>
+      
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-username">Username or Student ID</label>
+          <input type="text" id="login-username" class="form-control" required placeholder="e.g. 2400030661 or librarian">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-control" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block mt-3" id="login-submit-btn">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <!-- Register Switch -->
+      <div class="modal-footer-text">
+        <span>Need a student account? <a href="javascript:void(0)" onclick="toggleAuthMode()">Register here</a></span>
+      </div>
+
+      <!-- Register Form (Hidden by Default) -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-username">Username</label>
+          <input type="text" id="reg-username" class="form-control" required placeholder="Choose a username">
+        </div>
+        <div class="form-group">
+          <label for="reg-fullname">Full Name</label>
+          <input type="text" id="reg-fullname" class="form-control" required placeholder="e.g. Musuluri Sravanthi">
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" class="form-control" required placeholder="student@kluniversity.in">
+        </div>
+        <div class="form-group">
+          <label for="reg-studentid">Student ID</label>
+          <input type="text" id="reg-studentid" class="form-control" required placeholder="e.g. 2400030661">
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" class="form-control" required placeholder="At least 6 characters">
+        </div>
+        <div class="form-group">
+          <label for="reg-role">Role</label>
+          <select id="reg-role" class="form-control">
+            <option value="STUDENT">Student</option>
+            <option value="LIBRARIAN">Librarian</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block mt-3" id="reg-submit-btn">
+          <i class="fa-solid fa-user-plus"></i> Create Account
+        </button>
+        <div class="modal-footer-text">
+          <span>Already registered? <a href="javascript:void(0)" onclick="toggleAuthMode()">Back to Sign In</a></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- MODAL: ADD BOOK (STAFF / ADMIN) -->
+  <!-- ================================================================= -->
+  <div class="modal-backdrop hidden" id="add-book-modal">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-book-medical text-primary mr-1"></i> Add New Book Title</h3>
+        <button class="modal-close-btn" onclick="closeAddBookModal()">&times;</button>
+      </div>
+      <form id="add-book-form" onsubmit="handleAddBook(event)">
+        <div class="form-group">
+          <label for="book-title">Title</label>
+          <input type="text" id="book-title" class="form-control" required placeholder="Book title...">
+        </div>
+        <div class="form-group">
+          <label for="book-author">Author</label>
+          <input type="text" id="book-author" class="form-control" required placeholder="Author name...">
+        </div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="book-isbn">ISBN</label>
+            <input type="text" id="book-isbn" class="form-control" required placeholder="e.g. 978-0123456789">
+          </div>
+          <div class="form-group col-6">
+            <label for="book-category">Category</label>
+            <input type="text" id="book-category" class="form-control" required placeholder="e.g. Cloud Computing">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="book-copies">Total Copies</label>
+            <input type="number" id="book-copies" class="form-control" min="1" max="100" value="5" required>
+          </div>
+          <div class="form-group col-6">
+            <label for="book-branch">Campus Branch</label>
+            <select id="book-branch" class="form-control">
+              <option value="Main Campus Library">Main Campus Library</option>
+              <option value="Engineering Block Branch">Engineering Block Branch</option>
+              <option value="Tech Center Library">Tech Center Library</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block mt-3" id="save-book-btn">
+          <i class="fa-solid fa-floppy-disk"></i> Save Book to Inventory
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

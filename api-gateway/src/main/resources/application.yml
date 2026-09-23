@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+
+        - id: book-service
+          uri: lb://book-service
+          predicates:
+            - Path=/api/books/**
+
+        - id: rental-service
+          uri: lb://rental-service
+          predicates:
+            - Path=/api/rentals/**
+
+        - id: fine-service
+          uri: lb://fine-service
+          predicates:
+            - Path=/api/fines/**
+
+bibliotech:
+  jwt:
+    secret: BibliotechSecretKeyForJwtAuthenticationVeryLongSecureKey2026!
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
