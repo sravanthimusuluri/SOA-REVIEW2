@@ -21,6 +21,20 @@ public class FineResponse {
 
     public FineResponse() {}
 
+    public FineResponse(Long id, Long rentalId, String studentId, String studentUsername, Integer overdueDays,
+                        BigDecimal dailyRate, BigDecimal amount, FineStatus status, LocalDateTime createdAt, LocalDateTime paidAt) {
+        this.id = id;
+        this.rentalId = rentalId;
+        this.studentId = studentId;
+        this.studentUsername = studentUsername;
+        this.overdueDays = overdueDays;
+        this.dailyRate = dailyRate;
+        this.amount = amount;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.paidAt = paidAt;
+    }
+
     public static FineResponse fromEntity(Fine fine) {
         FineResponse response = new FineResponse();
         response.setId(fine.getId());

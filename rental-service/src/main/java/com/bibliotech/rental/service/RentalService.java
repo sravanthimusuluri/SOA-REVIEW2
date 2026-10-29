@@ -46,7 +46,7 @@ public class RentalService {
         String effectiveUsername = (currentUsername != null && !currentUsername.isBlank())
                 ? currentUsername : request.getStudentUsername();
         String effectiveStudentId = (currentStudentId != null && !currentStudentId.isBlank())
-                ? currentStudentId : request.getStudentId();
+                ? currentStudentId : effectiveUsername;
 
         if (effectiveUsername == null || effectiveUsername.isBlank()) {
             throw new IllegalArgumentException("Student username is required to borrow a book");
@@ -71,12 +71,7 @@ public class RentalService {
         }
 
         // 2. CHECK AVAILABILITY via BookClient
-        AvailabilityResponse availability;
-        try {
-            availability = bookClient.checkAvailability(request.getBookId());
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to check book availability from book-service: " + e.getMessage(), e);
-        }
+        AvailabilityResponse availability = bookClient.checkAvailability(request.getBookId());
 
         if (availability == null || !availability.isAvailable() || availability.getAvailableCopies() <= 0) {
             String title = (availability != null && availability.getTitle() != null) ? availability.getTitle() : "ID " + request.getBookId();
@@ -84,12 +79,8 @@ public class RentalService {
         }
 
         // 3. DECREMENT BOOK COPIES via BookClient
-        try {
-            bookClient.decrementCopies(request.getBookId());
-            logger.info("Successfully decremented inventory for book ID: {}", request.getBookId());
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to reserve book copy from book-service: " + e.getMessage(), e);
-        }
+        bookClient.decrementCopies(request.getBookId());
+        logger.info("Successfully decremented inventory for book ID: {}", request.getBookId());
 
         // 4. CREATE RENTAL RECORD
         int loanDays = (request.getLoanDays() != null && request.getLoanDays() > 0)
@@ -107,7 +98,18 @@ public class RentalService {
                 dueDate
         );
 
-        Rental saved = rentalRepository.save(rental);
+        Rental saved;
+        try {
+            saved = rentalRepository.save(rental);
+        } catch (RuntimeException saveFailure) {
+            try {
+                bookClient.incrementCopies(request.getBookId());
+            } catch (RuntimeException compensationFailure) {
+                saveFailure.addSuppressed(compensationFailure);
+                logger.error("Failed to restore book inventory after rental save failure", compensationFailure);
+            }
+            throw saveFailure;
+        }
         logger.info("Created rental loan #{} for student {} (book: '{}', due: {})",
                 saved.getId(), effectiveUsername, saved.getBookTitle(), saved.getDueDate());
 
@@ -136,52 +138,56 @@ public class RentalService {
         rental.setReturnDate(returnDate);
         rental.setStatus(RentalStatus.RETURNED);
 
-        // 1. INCREMENT BOOK COPIES via BookClient
-        try {
-            bookClient.incrementCopies(rental.getBookId());
-            logger.info("Incremented inventory for book ID: {} following return", rental.getBookId());
-        } catch (Exception e) {
-            logger.error("Failed to increment book copies on return: {}", e.getMessage());
-            // Proceed to not block student return record, but log warning
-        }
-
-        // 2. CHECK FOR OVERDUE & CALCULATE FINE via FineClient
+        // 1. CHECK FOR OVERDUE & CALCULATE FINE via FineClient
         RentalResponse response = RentalResponse.fromEntity(rental);
 
         if (returnDate.isAfter(rental.getDueDate())) {
             long overdueDays = ChronoUnit.DAYS.between(rental.getDueDate(), returnDate);
             logger.warn("Rental #{} is returned {} days overdue! Triggering fine calculation...", rentalId, overdueDays);
 
-            try {
-                CalculateFineRequest fineReq = new CalculateFineRequest(
-                        rental.getId(),
-                        rental.getStudentId(),
-                        rental.getStudentUsername(),
-                        (int) overdueDays
-                );
-                FineResponse fineResp = fineClient.calculateFine(fineReq);
-
-                rental.setFineId(fineResp.getId());
-                rental.setNote("Returned " + overdueDays + " days late. Fine incurred: ₹" + fineResp.getAmount());
-
-                response.setFineId(fineResp.getId());
-                response.setFineAmount(fineResp.getAmount());
-                response.setFineStatus(fineResp.getStatus());
-                response.setNote(rental.getNote());
-                response.setOverdue(true);
-
-                logger.info("Automated fine #{} recorded: ₹{}", fineResp.getId(), fineResp.getAmount());
-            } catch (Exception e) {
-                logger.error("Failed to record fine via fine-service: {}", e.getMessage());
-                rental.setNote("Returned " + overdueDays + " days late. Note: Fine recording service encountered an issue.");
+            CalculateFineRequest fineReq = new CalculateFineRequest(
+                    rental.getId(),
+                    rental.getStudentId(),
+                    rental.getStudentUsername(),
+                    (int) overdueDays
+            );
+            FineResponse fineResp = fineClient.calculateFine(fineReq);
+            if (fineResp == null || fineResp.getId() == null) {
+                throw new IllegalStateException("Fine service returned an incomplete response");
             }
+
+            rental.setFineId(fineResp.getId());
+            rental.setNote("Returned " + overdueDays + " days late. Fine incurred: ₹" + fineResp.getAmount());
+
+            response.setFineId(fineResp.getId());
+            response.setFineAmount(fineResp.getAmount());
+            response.setFineStatus(fineResp.getStatus());
+            response.setNote(rental.getNote());
+            response.setOverdue(true);
+
+            logger.info("Automated fine #{} recorded: ₹{}", fineResp.getId(), fineResp.getAmount());
         } else {
             rental.setNote("Returned on time. No overdue penalty.");
             response.setNote(rental.getNote());
             response.setOverdue(false);
         }
 
-        Rental saved = rentalRepository.save(rental);
+        // 2. INCREMENT BOOK COPIES via BookClient
+        bookClient.incrementCopies(rental.getBookId());
+        logger.info("Incremented inventory for book ID: {} following return", rental.getBookId());
+
+        Rental saved;
+        try {
+            saved = rentalRepository.save(rental);
+        } catch (RuntimeException saveFailure) {
+            try {
+                bookClient.decrementCopies(rental.getBookId());
+            } catch (RuntimeException compensationFailure) {
+                saveFailure.addSuppressed(compensationFailure);
+                logger.error("Failed to undo inventory update after rental return save failure", compensationFailure);
+            }
+            throw saveFailure;
+        }
         response.setId(saved.getId());
         response.setReturnDate(saved.getReturnDate());
         response.setStatus(saved.getStatus());
@@ -226,6 +232,10 @@ public class RentalService {
 
     @Transactional
     public RentalResponse simulateOverdue(Long rentalId, int daysPastDue, String currentUsername, boolean staff) {
+        if (daysPastDue <= 0) {
+            throw new IllegalArgumentException("Days past due must be greater than zero");
+        }
+
         Rental rental = rentalRepository.findById(rentalId)
                 .orElseThrow(() -> new IllegalArgumentException("Rental record not found with ID: " + rentalId));
 

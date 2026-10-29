@@ -27,8 +27,8 @@ public class RentalController {
     public ResponseEntity<RentalResponse> borrowBook(
             @Valid @RequestBody BorrowRequest request,
             @AuthenticationPrincipal String username,
-            @RequestHeader(value = "X-Student-Id", required = false) String studentIdHeader) {
-        RentalResponse response = rentalService.borrowBook(request, username, studentIdHeader);
+            @RequestAttribute(value = "studentId", required = false) String studentId) {
+        RentalResponse response = rentalService.borrowBook(request, username, studentId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -39,11 +39,16 @@ public class RentalController {
     }
 
     @GetMapping("/my-rentals")
-    public ResponseEntity<List<RentalResponse>> getMyRentals(@AuthenticationPrincipal String username) {
-        if (username == null || username.isBlank()) {
+    public ResponseEntity<List<RentalResponse>> getMyRentals(
+            @AuthenticationPrincipal String username,
+            Authentication authentication) {
+        String effectiveUser = (username != null && !username.isBlank())
+                ? username
+                : (authentication != null ? authentication.getName() : null);
+        if (effectiveUser == null || effectiveUser.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(rentalService.getRentalsByUsername(username));
+        return ResponseEntity.ok(rentalService.getRentalsByUsername(effectiveUser));
     }
 
     @GetMapping("/student/{studentId}")

@@ -1,0 +1,198 @@
+{
+  "info": {
+    "name": "Bibliotech Circulation API",
+    "description": "End-to-end Postman smoke test for auth, public book discovery, borrowing, overdue returns, and fine payment through the API Gateway.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "username", "value": "student" },
+    { "key": "password", "value": "student123" },
+    { "key": "token", "value": "" },
+    { "key": "bookId", "value": "" },
+    { "key": "rentalId", "value": "" },
+    { "key": "fineId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as demo student",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login succeeds', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('Login returns a bearer token', function () { pm.expect(body.token).to.be.a('string').and.not.empty; });",
+              "pm.collectionVariables.set('token', body.token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Browse books and save a book ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/books"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Catalog is public and responds successfully', function () { pm.response.to.have.status(200); });",
+              "const books = pm.response.json();",
+              "pm.test('Catalog contains at least one book', function () { pm.expect(books).to.be.an('array').that.is.not.empty; });",
+              "if (books.length > 0) pm.collectionVariables.set('bookId', books[0].id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Borrow a book",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"bookId\":{{bookId}},\"loanDays\":14}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/rentals/borrow"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Borrow succeeds', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.test('Rental is linked to the selected book and authenticated user', function () { pm.expect(body.bookId).to.eql(Number(pm.collectionVariables.get('bookId'))); pm.expect(body.studentUsername).to.eql(pm.collectionVariables.get('username')); });",
+              "pm.collectionVariables.set('rentalId', body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Simulate a two-day overdue rental",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/rentals/{{rentalId}}/simulate-overdue?days=2"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Overdue simulation succeeds', function () { pm.response.to.have.status(200); });",
+              "pm.test('Rental is marked overdue', function () { pm.expect(pm.response.json().overdue).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Return the overdue book and record a fine",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/rentals/{{rentalId}}/return"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Return succeeds', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('Overdue return includes its fine details', function () { pm.expect(body.status).to.eql('RETURNED'); pm.expect(body.fineId).to.exist; pm.expect(body.fineAmount).to.exist; });",
+              "pm.collectionVariables.set('fineId', body.fineId);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Get my rentals",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/rentals/my-rentals"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Current user rental history loads', function () { pm.response.to.have.status(200); });",
+              "pm.test('History includes the test rental', function () { pm.expect(pm.response.json().some(rental => rental.id === Number(pm.collectionVariables.get('rentalId')))).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Get my fines",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/fines/my-fines"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Current user fines load', function () { pm.response.to.have.status(200); });",
+              "pm.test('Fine is linked to the test rental', function () { pm.expect(pm.response.json().some(fine => fine.id === Number(pm.collectionVariables.get('fineId')))).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Pay the fine",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/api/fines/{{fineId}}/pay"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Fine payment succeeds', function () { pm.response.to.have.status(200); });",
+              "pm.test('Fine transitions to PAID', function () { pm.expect(pm.response.json().status).to.eql('PAID'); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

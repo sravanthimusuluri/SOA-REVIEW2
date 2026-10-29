@@ -1,5 +1,6 @@
 package com.bibliotech.book.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,9 +19,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final String internalServiceToken;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            @Value("${bibliotech.internal-service.token:local-development-internal-token-change-me}") String internalServiceToken) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Bean
@@ -31,9 +36,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**", "/actuator/**").permitAll()
-                // Internal endpoints for inter-service calls (decrement/increment)
-                .requestMatchers(HttpMethod.POST, "/api/books/*/decrement").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/books/*/increment").permitAll()
+                .requestMatchers(request -> isInternalInventoryRequest(request)).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/books/*/decrement", "/api/books/*/increment").denyAll()
                 // Availability check can be accessed by anyone
                 .requestMatchers(HttpMethod.GET, "/api/books/*/availability").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
@@ -47,5 +51,12 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private boolean isInternalInventoryRequest(jakarta.servlet.http.HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return "POST".equals(request.getMethod())
+                && path.matches("/api/books/\\d+/(decrement|increment)")
+                && internalServiceToken.equals(request.getHeader("X-Internal-Service-Token"));
     }
 }

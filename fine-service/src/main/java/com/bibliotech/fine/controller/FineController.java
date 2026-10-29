@@ -36,11 +36,16 @@ public class FineController {
     }
 
     @GetMapping("/my-fines")
-    public ResponseEntity<List<FineResponse>> getMyFines(@AuthenticationPrincipal String username) {
-        if (username == null || username.isBlank()) {
+    public ResponseEntity<List<FineResponse>> getMyFines(
+            @AuthenticationPrincipal String username,
+            Authentication authentication) {
+        String effectiveUser = (username != null && !username.isBlank())
+                ? username
+                : (authentication != null ? authentication.getName() : null);
+        if (effectiveUser == null || effectiveUser.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(fineService.getFinesByStudentUsername(username));
+        return ResponseEntity.ok(fineService.getFinesByStudentUsername(effectiveUser));
     }
 
     @GetMapping

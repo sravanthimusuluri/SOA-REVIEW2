@@ -12,7 +12,7 @@ public class Fine {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Long rentalId;
 
     @Column(nullable = false, length = 50)

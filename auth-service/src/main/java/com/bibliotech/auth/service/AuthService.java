@@ -38,15 +38,13 @@ public class AuthService {
             throw new IllegalArgumentException("Student ID is already registered: " + request.getStudentId());
         }
 
-        Role role = request.getRole() != null ? request.getRole() : Role.STUDENT;
-
         User user = new User(
                 request.getUsername(),
                 passwordEncoder.encode(request.getPassword()),
                 request.getFullName(),
                 request.getEmail(),
                 request.getStudentId(),
-                role
+                Role.STUDENT
         );
 
         User saved = userRepository.save(user);

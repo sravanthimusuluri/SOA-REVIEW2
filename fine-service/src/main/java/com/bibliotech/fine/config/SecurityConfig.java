@@ -1,5 +1,6 @@
 package com.bibliotech.fine.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,9 +19,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final String internalServiceToken;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            @Value("${bibliotech.internal-service.token:local-development-internal-token-change-me}") String internalServiceToken) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Bean
@@ -31,8 +36,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**", "/actuator/**").permitAll()
-                // Calculation endpoint can be called by rental-service
-                .requestMatchers(HttpMethod.POST, "/api/fines/calculate").authenticated()
+                .requestMatchers(request -> isInternalFineRequest(request)).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/fines/calculate").denyAll()
                 .requestMatchers("/api/fines/**").authenticated()
                 .anyRequest().authenticated()
             )
@@ -40,5 +45,11 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private boolean isInternalFineRequest(jakarta.servlet.http.HttpServletRequest request) {
+        return "POST".equals(request.getMethod())
+                && "/api/fines/calculate".equals(request.getRequestURI())
+                && internalServiceToken.equals(request.getHeader("X-Internal-Service-Token"));
     }
 }

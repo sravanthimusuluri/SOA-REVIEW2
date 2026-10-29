@@ -44,6 +44,10 @@ public class FineService {
         Optional<Fine> existingFineOpt = fineRepository.findByRentalId(request.getRentalId());
         if (existingFineOpt.isPresent()) {
             Fine existing = existingFineOpt.get();
+            if (!existing.getStudentId().equals(request.getStudentId())
+                    || !existing.getStudentUsername().equals(request.getStudentUsername())) {
+                throw new IllegalArgumentException("Rental already has a fine recorded for a different student");
+            }
             if (existing.getStatus() == FineStatus.UNPAID) {
                 existing.setOverdueDays(request.getOverdueDays());
                 existing.setDailyRate(dailyRate);

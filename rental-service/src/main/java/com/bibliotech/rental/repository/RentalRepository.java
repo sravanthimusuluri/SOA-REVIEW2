@@ -33,6 +33,6 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
             @Param("bookId") Long bookId,
             @Param("statuses") Collection<RentalStatus> statuses);
 
-    @Query("SELECT r FROM Rental r WHERE r.status = 'ISSUED' AND r.dueDate < :today")
+    @Query("SELECT r FROM Rental r WHERE r.status IN ('ISSUED', 'OVERDUE') AND r.dueDate < :today")
     List<Rental> findOverdueRentals(@Param("today") LocalDate today);
 }

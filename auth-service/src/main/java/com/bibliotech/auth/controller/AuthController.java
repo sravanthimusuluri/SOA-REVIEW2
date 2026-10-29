@@ -4,11 +4,13 @@ import com.bibliotech.auth.dto.AuthResponse;
 import com.bibliotech.auth.dto.LoginRequest;
 import com.bibliotech.auth.dto.RegisterRequest;
 import com.bibliotech.auth.dto.ValidateTokenResponse;
+import com.bibliotech.auth.dto.UserProfileResponse;
 import com.bibliotech.auth.entity.User;
 import com.bibliotech.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -58,7 +60,8 @@ public class AuthController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<User> getProfile(@RequestParam("username") String username) {
-        return ResponseEntity.ok(authService.getUserProfile(username));
+    public ResponseEntity<UserProfileResponse> getProfile(@AuthenticationPrincipal String username) {
+        User user = authService.getUserProfile(username);
+        return ResponseEntity.ok(UserProfileResponse.fromEntity(user));
     }
 }

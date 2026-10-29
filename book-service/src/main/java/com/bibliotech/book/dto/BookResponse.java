@@ -20,6 +20,18 @@ public class BookResponse {
 
     public BookResponse() {}
 
+    public BookResponse(Long id, String title, String author, String isbn, String category, Integer totalCopies, Integer availableCopies, String branch) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.isbn = isbn;
+        this.category = category;
+        this.totalCopies = totalCopies;
+        this.availableCopies = availableCopies;
+        this.branch = branch;
+        this.available = availableCopies != null && availableCopies > 0;
+    }
+
     public static BookResponse fromEntity(Book book) {
         BookResponse response = new BookResponse();
         response.setId(book.getId());

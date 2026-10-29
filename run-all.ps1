@@ -8,24 +8,19 @@ $root = $PSScriptRoot
 
 Write-Host ""
 Write-Host "==================================================================" -ForegroundColor Cyan
-Write-Host "  BIBLIOTECH CIRCULATION SYSTEMS - MICROSERVICES PLATFORM LAUNCHER " -ForegroundColor Yellow
+Write-Host "  BIBLIOTECH CIRCULATION SYSTEMS - BACKEND MICROSERVICES LAUNCHER " -ForegroundColor Yellow
 Write-Host "  Course: 24SDCS03A | Project PS021 | KL University CSE            " -ForegroundColor White
 Write-Host "==================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Build Maven JARs if target folders are missing
-$eurekaJar = "$root\eureka-server\target\eureka-server-1.0.0.jar"
-if (-not (Test-Path $eurekaJar)) {
-    Write-Host "[1/7] Building multi-module Maven packages..." -ForegroundColor Yellow
-    mvn clean package -DskipTests
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Maven build failed. Please resolve compilation issues." -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "Maven build completed successfully!" -ForegroundColor Green
-} else {
-    Write-Host "[1/7] Pre-compiled JARs detected. Skipping full rebuild." -ForegroundColor Green
+# 1. Rebuild on every launch so the running JARs match the current source.
+Write-Host "[1/7] Building multi-module Maven packages..." -ForegroundColor Yellow
+mvn -f "$root\pom.xml" package -DskipTests
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Maven build failed. Please resolve compilation issues." -ForegroundColor Red
+    exit 1
 }
+Write-Host "Maven build completed successfully!" -ForegroundColor Green
 
 # Helper to start service in separate console window
 function Start-ServiceWindow($name, $dir, $port) {
@@ -67,17 +62,10 @@ Start-ServiceWindow "api-gateway" "api-gateway" 8080
 Write-Host "Waiting 10 seconds for Gateway and Eureka discovery heartbeat..." -ForegroundColor Gray
 Start-Sleep -Seconds 10
 
-# 5. Open Web Frontend Dashboard
-$frontendPath = "$root\frontend\index.html"
-Write-Host ""
-Write-Host "Opening Bibliotech Frontend Dashboard in default browser..." -ForegroundColor Green
-Start-Process $frontendPath
-
 Write-Host ""
 Write-Host "==================================================================" -ForegroundColor Green
-Write-Host "  ALL BIBLIOTECH PLATFORM SERVICES ARE NOW RUNNING!               " -ForegroundColor Yellow
+Write-Host "  ALL BIBLIOTECH BACKEND SERVICES ARE NOW RUNNING!                " -ForegroundColor Yellow
 Write-Host "==================================================================" -ForegroundColor Green
-Write-Host "  * Web Frontend UI:     $frontendPath" -ForegroundColor White
 Write-Host "  * API Gateway:         http://localhost:8080" -ForegroundColor White
 Write-Host "  * Eureka Dashboard:    http://localhost:8761" -ForegroundColor White
 Write-Host "  * Auth Service:        http://localhost:8081" -ForegroundColor White

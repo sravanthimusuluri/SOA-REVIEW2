@@ -27,6 +27,25 @@ public class RentalResponse {
 
     public RentalResponse() {}
 
+    public RentalResponse(Long id, String studentId, String studentUsername, Long bookId, String bookTitle,
+                          LocalDate issueDate, LocalDate dueDate, LocalDate returnDate, RentalStatus status,
+                          boolean overdue, Long fineId, BigDecimal fineAmount, String fineStatus, String note) {
+        this.id = id;
+        this.studentId = studentId;
+        this.studentUsername = studentUsername;
+        this.bookId = bookId;
+        this.bookTitle = bookTitle;
+        this.issueDate = issueDate;
+        this.dueDate = dueDate;
+        this.returnDate = returnDate;
+        this.status = status;
+        this.overdue = overdue;
+        this.fineId = fineId;
+        this.fineAmount = fineAmount;
+        this.fineStatus = fineStatus;
+        this.note = note;
+    }
+
     public static RentalResponse fromEntity(Rental rental) {
         RentalResponse response = new RentalResponse();
         response.setId(rental.getId());
